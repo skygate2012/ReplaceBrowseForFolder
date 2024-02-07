@@ -12,6 +12,6 @@ The _SetPathForBrowseForFolder_ function can also be used separately for automat
 [RemoteTreeViewClass](https://www.autohotkey.com/boards/viewtopic.php?t=4998#p29502)\
 [SelectFolderEx](https://www.autohotkey.com/boards/viewtopic.php?t=18939)
 
-To use, either download and run ReplaceBrowseForFolder.ahk (requires AutoHotkey v1.1); or download the compiled binary from [Releases](https://github.com/skygate2012/ReplaceBrowseForFolder/releases/tag/v1.0).
+To use, either download and run ReplaceBrowseForFolder.ahk (requires AutoHotkey v1.1); or download the compiled binary from [Releases](https://github.com/skygate2012/ReplaceBrowseForFolder/releases/tag/v1.1).
 
-Forum post: [https://www.autohotkey.com/boards/viewtopic.php?f=83&t=110941](https://www.autohotkey.com/boards/viewtopic.php?f=76&t=124718)
+Forum post: [https://www.autohotkey.com/boards/viewtopic.php?f=6&t=124771](https://www.autohotkey.com/boards/viewtopic.php?f=6&t=124771)

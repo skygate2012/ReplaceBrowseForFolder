@@ -1,13 +1,33 @@
+﻿#Requires AutoHotkey v1.1.33+
+;@Ahk2Exe-SetMainIcon ReplaceBrowseForFolder.ico
+;@Ahk2Exe-Base Unicode 32*
+;@Ahk2Exe-PostExec "MPRESS.exe" "%A_WorkFileName%" -q -x, 0,, 1
+;@Ahk2Exe-IgnoreBegin
+; Set tray icon
+Try
+	Menu, Tray, Icon, shell32.dll, 301
+;@Ahk2Exe-IgnoreEnd
+
 #NoEnv
 #Persistent
 #SingleInstance Force
-SetBatchLines -1
-
 ;#Include <RemoteTreeViewClass>
 ;#Include <SelectFolderEx>
+SetBatchLines -1
 
-; Browse For Folder Watcher
-ReplaceBrowseForFolder()
+; Togglable dialog watcher in tray menu
+MenuItemName := "Replace Browse For Folder"
+Menu, Tray, Add, % MenuItemName, ToggleReplaceBrowseForFolder
+ToggleReplaceBrowseForFolder(ItemName) {
+	Static Toggle
+	ReplaceBrowseForFolder(Toggle := !Toggle)
+	Menu, Tray, ToggleCheck, % ItemName
+}
+; Toggle on by default
+ToggleReplaceBrowseForFolder(MenuItemName)
+
+; or, simply enable the dialog watcher without the tray toggle
+;ReplaceBrowseForFolder(true)
 Return
 
 ; For testing/demo purposes
@@ -27,27 +47,30 @@ If (SelectedPath := SelectFolderEx(, , DialogHwnd))
 Return
 */
 
-
 ReplaceBrowseForFolder(Params*) {
     Static EVENT_OBJECT_SHOW := 0x8002
 	,      OBJID_WINDOW := 0
 	,      INDEXID_CONTAINER := 0
+	,      hHook := 0
 	If IsObject(Params) {
-		DllCall("SetWinEventHook", "Int", EVENT_OBJECT_SHOW
-			  , "Int", EVENT_OBJECT_SHOW, "Ptr", 0, "Ptr"
-			  ,  RegisterCallback(A_ThisFunc)
-			  , "Int", 0, "Int", 0, "Int", 0, "Ptr")
+		Return hHook := Params[1] 
+		? DllCall("SetWinEventHook", "Int", EVENT_OBJECT_SHOW
+		, "Int", EVENT_OBJECT_SHOW, "Ptr", 0, "Ptr"
+		,  RegisterCallback(A_ThisFunc)
+		, "Int", 0, "Int", 0, "Int", 0, "Ptr")
+		: DllCall("UnhookWinEvent", "Ptr", hHook), DllCall("CoUninitialize")
 	} Else {
 		hwnd := NumGet(params+0, 2*A_PtrSize, "Ptr")
 		idObject := NumGet(params+0, 3*A_PtrSize, "Int")
 		idChild := NumGet(params+0, 4*A_PtrSize, "Int")
 		If (idObject != OBJID_WINDOW || idChild != INDEXID_CONTAINER)
 			Return
-		WinGetClass Class, % "ahk_id" hwnd
-		If (Class != "#32770")
+		WinGetClass wndClass, % "ahk_id" hwnd
+		If (wndClass != "#32770")
 			Return
-		ControlGet, hctl, Hwnd,, SHBrowseForFolder ShellNameSpace Control1, % "ahk_id" hwnd
-		If !hctl
+		WinGet CtlList, ControlList, % "ahk_id" hwnd
+		If !(  InStr(CtlList, "SHBrowseForFolder ShellNameSpace Control")
+			|| CtlList = "Static1`nStatic2`nSysTreeView321`nButton1`nButton2" )
 			Return
 		If (SelectedPath := SelectFolderEx(, , hwnd))
 			SetPathForBrowseForFolder(SelectedPath, hwnd)
@@ -56,13 +79,15 @@ ReplaceBrowseForFolder(Params*) {
 	}
 }
 
-SetPathForBrowseForFolder(TargetPath, DialogHwnd) {
+SetPathForBrowseForFolder(TargetPath, DialogHwnd:=0x0) {
 	If !InStr(FileExist(TargetPath), "D") {
 		Msgbox, 0x10, Error, % "Directory does not exist: `n" TargetPath
 		Return
 	}
 	PathTree := GetExplorerPathTree(TargetPath)
-	If !WinActive(DialogHwnd) {
+	If !DialogHwnd
+		DialogHwnd := WinExist("A")
+	Else If !WinActive(DialogHwnd) {
 		WinActivate % "ahk_id" DialogHwnd
 		WinWaitActive % "ahk_id" DialogHwnd
 	}
@@ -83,6 +108,7 @@ SetPathForBrowseForFolder(TargetPath, DialogHwnd) {
 			RTV.SetSelection(hItem, 1)
 		} Else {
 			RTV.SetSelection(hItem, 0)
+			RTV.Expand(hItem)
 			Loop
 				hChild := RTV.GetChild(hItem)
 			Until hChild
@@ -99,8 +125,6 @@ GetExplorerPathTree(FolderPath) {
 	Until !(Folder := Folder.ParentFolder)
 	Return PathTree
 }
-
-
 
 
 ; ==================================================================================================================================
