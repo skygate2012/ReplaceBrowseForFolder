@@ -1,5 +1,6 @@
 ﻿#Requires AutoHotkey v1.1.33+
 ;@Ahk2Exe-SetMainIcon ReplaceBrowseForFolder.ico
+;@Ahk2Exe-SetVersion 1.2
 ;@Ahk2Exe-Base Unicode 32*
 ;@Ahk2Exe-PostExec "MPRESS.exe" "%A_WorkFileName%" -q -x, 0,, 1
 ;@Ahk2Exe-IgnoreBegin
@@ -93,27 +94,29 @@ SetPathForBrowseForFolder(TargetPath, DialogHwnd:=0x0) {
 	}
 	ControlGet, hctl, Hwnd,, SysTreeView321, % "ahk_id" DialogHwnd	
 	RTV := new RemoteTreeview(hctl)
-	PathTree_Length := PathTree.Length()
 	For Index, Level in PathTree
 	{
-		hItem := RTV.GetHandleByText(Level)
-		If !hItem {
-			FurthestPath := ""
-			For Index, Level in PathTree
-				FurthestPath .= Level "\"
-			Throw Exception("Walk failed at: `n" FurthestPath, "RemoteTreeview.GetHandleByText")
-			Return
+		T_Start := A_TickCount
+		Loop {
+			hItem := RTV.GetHandleByText(Level)
+			If hItem {
+				Break
+			} Else If (A_TickCount - T_Start >= 60000) {
+				Msgbox, 0x1004, , % "Been waiting for a minute. Abort?"
+				IfMsgBox, Yes
+					Return
+				Else
+					T_Start := A_TickCount
+			} Else If !WinExist("ahk_id" DialogHwnd) {
+				Return
+			}
 		}
-		If (Index = PathTree_Length) {
-			RTV.SetSelection(hItem, 1)
-		} Else {
-			RTV.SetSelection(hItem, 0)
-			RTV.Expand(hItem)
-			Loop
-				hChild := RTV.GetChild(hItem)
-			Until hChild
-		}
+		RTV.SetSelection(hItem, 0)
+		RTV.Expand(hItem)
 	}
+	Loop
+		Controlsend, , {Enter}, % "ahk_id " DialogHwnd
+	Until !WinExist("ahk_id" DialogHwnd)
 }
 
 GetExplorerPathTree(FolderPath) {
@@ -121,7 +124,7 @@ GetExplorerPathTree(FolderPath) {
 	Folder := Shell.NameSpace(FolderPath)
 	PathTree := []
 	Loop
-		PathTree.InsertAt(1, Folder.Title)
+		PathTree.InsertAt(1, Folder.Self.Name)
 	Until !(Folder := Folder.ParentFolder)
 	Return PathTree
 }
